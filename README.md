@@ -5,7 +5,7 @@
 - Hồ Đức Nhân Thiện
 - Trần Quốc Bảo
 - Nguyễn Huỳnh Tấn Phát
-- Nguyễn Minh Đức
+- Nguyễn Ngọc Minh Đức
 
 ---
 
