@@ -5,6 +5,8 @@ Hồ Đức Nhân Thiện
 Trần Quốc Bảo
 Nguyễn Huỳnh Tấn Phát
 Nguyễn Minh Đức
+
+
 📖 Giới thiệu (Introduction)
 Dự án này là Đồ án cuối kỳ môn Xử lý và Phân tích Hình ảnh. Mục tiêu của dự án là nghiên cứu, cài đặt và đánh giá hiệu quả của các phương pháp Hình thái học (Morphological) và Đặc trưng đánh dấu (Marked Features) để phát hiện và trích xuất các mẫu (pattern) cụ thể trong ảnh kỹ thuật số.
 
