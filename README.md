@@ -2,10 +2,10 @@
 ## Ứng dụng Morphological Hit-or-Miss và Marked Features (Morphological Reconstruction)
 
 ## 👥 Thành viên
-- Hồ Đức Nhân Thiện
-- Trần Quốc Bảo
-- Nguyễn Huỳnh Tấn Phát
-- Nguyễn Ngọc Minh Đức
+- Hồ Đức Nhân Thiện - 31231026999
+- Trần Quốc Bảo - 31231022657
+- Nguyễn Huỳnh Tấn Phát - 31231024397
+- Nguyễn Ngọc Minh Đức - 31231020325
 
 ---
 
