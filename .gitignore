@@ -1,0 +1,22 @@
+# Dữ liệu và file nặng
+data/raw/*
+data/segmented/*
+data/processed/*.csv
+!data/raw/.gitkeep
+!data/segmented/.gitkeep
+!data/processed/.gitkeep
+
+# Model Weights
+models/*.pkl
+models/*.pth
+
+# Python Cache & Môi trường ảo
+__pycache__/
+*.py[cod]
+venv/
+env/
+.ipynb_checkpoints/
+# Bỏ qua các file nén
+*.zip
+*.rar
+*.tar.gz
