@@ -1,1 +1,0 @@
-i = imread("cameraman.tif")
