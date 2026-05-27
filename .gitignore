@@ -1,7 +1,6 @@
 # Dữ liệu và file nặng
 data/raw/*
 data/segmented/*
-data/processed/*.csv
 !data/raw/.gitkeep
 !data/segmented/.gitkeep
 !data/processed/.gitkeep
