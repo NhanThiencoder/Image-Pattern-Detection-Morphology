@@ -1,186 +1,249 @@
 function PlantDiseaseApp()
     % TẠO CỬA SỔ CHÍNH (MAIN FIGURE)
     fig = uifigure('Name', 'Hệ Thống Phân Tích Sâu Bệnh (Hybrid Model)', ...
-                   'Position', [100, 100, 1100, 650]);
+                   'Position', [100, 100, 1200, 750]);
     
-    % Biến toàn cục (State) để lưu trữ dữ liệu trong App
     appData = struct('OriginalImage', [], 'MarkedImage', [], 'DiseaseMask', []);
-
-    % CHIA BỐ CỤC CHÍNH LÀM 2 CỘT (Grid Layout)
-    % Cột 1: Bảng điều khiển (Rộng 350px) | Cột 2: Hiển thị ảnh (Tự động co giãn '1x')
+    
     mainGrid = uigridlayout(fig, [1, 2]);
-    mainGrid.ColumnWidth = {350, '1x'};
-
+    mainGrid.ColumnWidth = {400, '1x'};
+    
     % =====================================================================
-    % KHU VỰC 1: FRAME BẢNG ĐIỀU KHIỂN & KẾT QUẢ (CỘT TRÁI)
+    % KHU VỰC 1: FRAME BẢNG ĐIỀU KHIỂN & KẾT QUẢ
     % =====================================================================
     leftPanel = uipanel(mainGrid, 'Title', '⚙️ Điều Khiển & Kết Quả Học Thuật', ...
                         'FontSize', 14, 'FontWeight', 'bold');
-    leftGrid = uigridlayout(leftPanel, [7, 1]);
-    leftGrid.RowHeight = {40, 40, 40, 50, 150, '1x', 40}; % Chiều cao các hàng
-
-    % 1. Nút Tải Ảnh
-    uploadBtn = uibutton(leftGrid, 'push', 'Text', '📁 TẢI ẢNH LÊN', ...
-                         'FontSize', 14, 'FontWeight', 'bold', ...
-                         'ButtonPushedFcn', @uploadImageCallback);
+                        
+    % SỬA LỖI UI: Định nghĩa đúng 9 hàng cho 9 phần tử
+    leftGrid = uigridlayout(leftPanel, [9, 1]);
+    leftGrid.RowHeight = {40, 25, 35, 45, 25, 120, 25, '1x', 35}; 
     
-    % 2. Dropdown Chọn Mô Hình
-    uilabel(leftGrid, 'Text', 'Chọn Mô Hình (Feature Extraction):', 'FontWeight', 'bold');
-    modelDropdown = uidropdown(leftGrid, ...
-        'Items', {'1. Morphological + RF (Cơ bản)', '2. Texture + Color + RF', '3. Hybrid CNN-SVM (Tối ưu)'}, ...
-        'FontSize', 12);
-
-    % 3. Nút Phân Tích
+    uploadBtn = uibutton(leftGrid, 'push', 'Text', '📁 TẢI ẢNH LÊN', ...
+                         'FontSize', 14, 'FontWeight', 'bold', 'ButtonPushedFcn', @uploadImageCallback);
+    
+    uilabel(leftGrid, 'Text', 'Chọn Mô Hình AI (Classifier):', 'FontWeight', 'bold');
+    modelDropdown = uidropdown(leftGrid, 'Items', {'Random Forest (Khuyên dùng)', 'SVM (RBF Kernel)'}, 'FontSize', 12);
+        
     analyzeBtn = uibutton(leftGrid, 'push', 'Text', '🔍 PHÂN TÍCH & TRÍCH XUẤT', ...
                           'FontSize', 14, 'FontWeight', 'bold', ...
                           'BackgroundColor', [0.2 0.6 0.3], 'FontColor', 'white', ...
-                          'Enable', 'off', ... % Ban đầu tắt, có ảnh mới bật
-                          'ButtonPushedFcn', @analyzeImageCallback);
-
-    % 4. Gauge: Đồng hồ đo Mật Độ Bệnh
-    gaugeLabel = uilabel(leftGrid, 'Text', 'Mật độ Sâu Bệnh (Density %):', ...
-                         'FontWeight', 'bold', 'HorizontalAlignment', 'center');
-    densityGauge = uigauge(leftGrid, 'semicircular', 'Limits', [0 100], ...
-                           'Value', 0);
+                          'Enable', 'off', 'ButtonPushedFcn', @analyzeImageCallback);
+                          
+    gaugeLabel = uilabel(leftGrid, 'Text', 'Mật độ Sâu Bệnh (Density %):', 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+    densityGauge = uigauge(leftGrid, 'semicircular', 'Limits', [0 100], 'Value', 0);
     
-    % 5. Bảng hiển thị Đặc Trưng Hình Thái (Morphological Features)
-    uilabel(leftGrid, 'Text', 'Bảng Đặc Trưng Hình Thái (Morphological):', 'FontWeight', 'bold');
-    featureTable = uitable(leftGrid, 'ColumnName', {'Đặc Trưng', 'Giá Trị'}, ...
-                           'RowName', [], 'Data', cell(0,2));
-
-    % 6. Nhãn kết luận bệnh
+    uilabel(leftGrid, 'Text', 'Bảng Đặc Trưng Rút Trích (24 Features):', 'FontWeight', 'bold');
+    featureTable = uitable(leftGrid, 'ColumnName', {'Đặc Trưng', 'Giá Trị'}, 'RowName', [], 'Data', cell(0,2));
+                           
     resultLabel = uilabel(leftGrid, 'Text', 'Trạng thái: Chờ tải ảnh...', ...
-                          'FontSize', 16, 'FontColor', [0.8 0.2 0.2], ...
-                          'FontWeight', 'bold', 'HorizontalAlignment', 'center');
-
+                          'FontSize', 16, 'FontColor', [0.8 0.2 0.2], 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+                          
     % =====================================================================
-    % KHU VỰC 2: FRAME TRỰC QUAN HÓA ẢNH (CỘT PHẢI)
+    % KHU VỰC 2: FRAME TRỰC QUAN HÓA ẢNH 
     % =====================================================================
     rightPanel = uipanel(mainGrid, 'Title', '🖼️ Trực Quan Hóa (Visualizations)', ...
                          'FontSize', 14, 'FontWeight', 'bold');
-    rightGrid = uigridlayout(rightPanel, [1, 2]); % 1 hàng, 2 cột ảnh
-
-    % Ảnh gốc
-    axOriginal = uiaxes(rightGrid);
-    title(axOriginal, 'Ảnh Đầu Vào (Original Image)');
-    axOriginal.XColor = 'none'; axOriginal.YColor = 'none'; % Ẩn trục tọa độ
-
-    % Ảnh đã xử lý (Marked Features)
-    axMarked = uiaxes(rightGrid);
-    title(axMarked, 'Định vị Vết Bệnh (Marked Features)');
+    rightGrid = uigridlayout(rightPanel, [1, 2]);
+    
+    axOriginal = uiaxes(rightGrid); title(axOriginal, 'Ảnh Đầu Vào');
+    axOriginal.XColor = 'none'; axOriginal.YColor = 'none'; 
+    
+    axMarked = uiaxes(rightGrid); title(axMarked, 'Định vị Vết Bệnh (Marked Features)');
     axMarked.XColor = 'none'; axMarked.YColor = 'none';
-
+    
     % =====================================================================
-    % CÁC HÀM XỬ LÝ SỰ KIỆN (BACKEND LOGIC)
+    % HÀM XỬ LÝ 1: TẢI ẢNH LÊN
     % =====================================================================
-
-    % --- Logic 1: Khi bấm nút "Tải Ảnh Lên" ---
     function uploadImageCallback(~, ~)
         [filename, pathname] = uigetfile({'*.jpg;*.jpeg;*.png', 'Image Files'});
-        if isequal(filename, 0)
-            return; % Hủy chọn file
-        end
+        if isequal(filename, 0); return; end
         
-        % Đọc ảnh và lưu vào State
         fullpath = fullfile(pathname, filename);
-        appData.OriginalImage = imread(fullpath);
+        img = imread(fullpath);
+        appData.OriginalImage = imresize(img, [256 256]);
         
-        % Hiển thị ảnh lên giao diện
         imshow(appData.OriginalImage, 'Parent', axOriginal);
-        
-        % Reset các thông số cũ
-        cla(axMarked); % Xóa ảnh kết quả cũ
+        cla(axMarked);
         densityGauge.Value = 0;
         featureTable.Data = cell(0,2);
         resultLabel.Text = 'Sẵn sàng phân tích...';
         resultLabel.FontColor = [0.2 0.2 0.8];
-        
-        % Bật nút Phân tích
         analyzeBtn.Enable = 'on';
     end
-
-    % --- Logic 2: Khi bấm nút "Phân Tích & Trích Xuất" ---
+    
+    % =====================================================================
+    % HÀM XỬ LÝ 2: CHẠY AI & TRÍCH XUẤT
+    % =====================================================================
     function analyzeImageCallback(~, ~)
-        % Thay đổi trạng thái UI đang tính toán
-        analyzeBtn.Text = '⏳ Đang xử lý...';
-        drawnow; % Ép MATLAB cập nhật giao diện ngay lập tức
+        analyzeBtn.Text = '⏳ Đang load Model & Xử lý...';
+        analyzeBtn.Enable = 'off';
+        drawnow;
         
         try
+            app_dir = fileparts(mfilename('fullpath'));
+            model_path = fullfile(app_dir, '..', 'models', 'best_svm_rf_models.mat');
+            if ~exist(model_path, 'file')
+                model_path = fullfile(app_dir, 'models', 'best_svm_rf_models.mat');
+            end
+            if ~exist(model_path, 'file')
+                error(['Không tìm thấy model tại: ', model_path]);
+            end
+            load(model_path, 'rf_model', 'svm_model', 'mu', 'sigma');
+            
+            % -------------------------------------------------------------
+            % TIỀN XỬ LÝ & TẠO MASK (THUẬT TOÁN MỚI KHÁNG NHIỄU)
+            % -------------------------------------------------------------
             img = appData.OriginalImage;
+            img_smooth = imgaussfilt(img, 1.5); 
+            
+            % BƯỚC 1: Tìm chiếc lá (Bỏ nền rác/đất)
+            grayImg = rgb2gray(img_smooth);
+            level = graythresh(grayImg);
+            leafMask = imbinarize(grayImg, level);
+            leafMask = imfill(leafMask, 'holes');
+            leafMask = bwareaopen(leafMask, 500); 
+            % Lệnh then chốt: Quét toàn ảnh, CHỈ giữ lại 1 vật thể to nhất (chiếc lá)
+            leafMask = bwareafilt(leafMask, 1); 
+            
+            % BƯỚC 2: Khoanh vùng bệnh (Vùng MẤT MÀU XANH trên lá)
+            hsvImg = rgb2hsv(img_smooth);
+            H = hsvImg(:,:,1); 
+            % Xanh lục: H từ 0.15 - 0.45. Bệnh là phần nằm ngoài khoảng này.
+            diseaseMask = (H < 0.15 | H > 0.45) & leafMask;
+            diseaseMask = bwareaopen(diseaseMask, 40); % Lọc hạt nhiễu
             
             % -------------------------------------------------------------
-            % PHẦN CORE ALGORITHM: THAY BẰNG MODEL AI/CV CỦA NHÓM BẠN Ở ĐÂY
-            % Dưới đây là code Xử lý ảnh cơ bản (Mock) để Demo thuật toán:
+            % TÍNH TOÁN ĐẶC TRƯNG HÌNH THÁI
             % -------------------------------------------------------------
-            
-            % B1. Chuyển sang không gian màu HSV để tách lá và vết bệnh
-            hsvImg = rgb2hsv(img);
-            sChannel = hsvImg(:,:,2);
-            
-            % B2. Tạo mask chiếc lá (Tách nền) - Giả lập
-            leafMask = sChannel > 0.2; 
-            
-            % B3. Phân đoạn vùng bệnh (Dùng Otsu trên kênh Gray)
-            grayImg = rgb2gray(img);
-            diseaseMask = (grayImg < 100) & leafMask; % Giả lập vết thối có màu tối
-            
-            % B4. Tính toán Morphological Features (Dùng regionprops)
-            statsLeaf = regionprops(leafMask, 'Area', 'Perimeter');
-            statsDisease = regionprops(diseaseMask, 'Area');
-            
-            totalLeafArea = sum([statsLeaf.Area]);
-            totalDiseaseArea = sum([statsDisease.Area]);
-            
-            % Nếu không có lá, tránh lỗi chia cho 0
-            if totalLeafArea == 0; totalLeafArea = 1; end
-            
-            % B5. Tính Mật độ (Density)
-            density = (totalDiseaseArea / totalLeafArea) * 100;
-            
-            % Lấy một số đặc trưng phụ họa cho bảng
-            leafPerimeter = sum([statsLeaf.Perimeter]);
-            solidityMock = rand() * 0.2 + 0.7; % Giả lập độ lồi
-            
-            % -------------------------------------------------------------
-            % CẬP NHẬT KẾT QUẢ LÊN GIAO DIỆN (UI)
-            % -------------------------------------------------------------
-            
-            % Cập nhật Đồng hồ
-            densityGauge.Value = min(density, 100);
-            
-            % Cập nhật Bảng Tabular Data
-            featureTable.Data = {
-                'Diện Tích Lá (px)', round(totalLeafArea);
-                'Diện Tích Bệnh (px)', round(totalDiseaseArea);
-                'Chu Vi Lá (px)', round(leafPerimeter);
-                'Độ Lồi (Solidity)', sprintf('%.2f', solidityMock);
-                'MẬT ĐỘ BỆNH (%)', sprintf('%.2f %%', density)
-            };
-            
-            % Đưa ra kết luận dựa vào mật độ
-            if density < 2
-                resultLabel.Text = 'Kết luận: LÁ KHỎE MẠNH 🌿';
-                resultLabel.FontColor = [0.2 0.8 0.2];
-            else
-                resultLabel.Text = 'Kết luận: PHÁT HIỆN SÂU BỆNH ⚠️';
-                resultLabel.FontColor = [0.8 0.2 0.2];
+            props = regionprops(leafMask, 'Area', 'Perimeter', 'Eccentricity', ...
+                'Solidity', 'Extent', 'MajorAxisLength', 'MinorAxisLength', ...
+                'EquivDiameter', 'ConvexArea');
+                
+            if isempty(props)
+                error('Không nhận diện được chiếc lá trong ảnh!');
             end
             
-            % Vẽ viền đỏ lên ảnh gốc (Marked Features)
+            Area = props.Area; Perimeter = props.Perimeter; Eccentricity = props.Eccentricity;
+            Solidity = props.Solidity; Extent = props.Extent; MajorAxis = props.MajorAxisLength;
+            MinorAxis = props.MinorAxisLength; EquivDiameter = props.EquivDiameter;
+            ConvexArea = props.ConvexArea; AspectRatio = MajorAxis / max(MinorAxis, eps);
+            Circularity = (4 * pi * Area) / max(Perimeter^2, eps);
+            
+            morph_features = [Area, Perimeter, Eccentricity, Solidity, Extent, ...
+                              MajorAxis, MinorAxis, AspectRatio, EquivDiameter, ConvexArea, Circularity];
+                              
+            % -------------------------------------------------------------
+            % TÍNH TOÁN ĐẶC TRƯNG MÀU SẮC & KẾT CẤU
+            % -------------------------------------------------------------
+            S = hsvImg(:,:,2); V = hsvImg(:,:,3);
+            H_leaf = H(leafMask); S_leaf = S(leafMask); V_leaf = V(leafMask);
+            h_mean = mean(H_leaf); h_std = std(H_leaf); h_skew = skewness(H_leaf);
+            s_mean = mean(S_leaf); s_std = std(S_leaf); s_skew = skewness(S_leaf);
+            v_mean = mean(V_leaf); v_std = std(V_leaf); v_skew = skewness(V_leaf);
+            
+            gray_double = double(grayImg);
+            gray_double(~leafMask) = NaN;
+            
+            offsets = [0 1; -1 1; -1 0; -1 -1]; 
+            glcm = graycomatrix(gray_double, 'Offset', offsets, 'NumLevels', 256, 'Symmetric', true);
+            stats = graycoprops(glcm, {'Contrast', 'Correlation', 'Energy', 'Homogeneity'});
+            
+            color_texture_features = [h_mean, h_std, h_skew, s_mean, s_std, s_skew, ...
+                                      v_mean, v_std, v_skew, mean(stats.Contrast), ...
+                                      mean(stats.Correlation), mean(stats.Energy), mean(stats.Homogeneity)];
+                                      
+            % -------------------------------------------------------------
+            % DỰ ĐOÁN (INFERENCE)
+            % -------------------------------------------------------------
+            X_input = [morph_features, color_texture_features];
+            X_input(isnan(X_input)) = 0; 
+            X_input_scaled = (X_input - mu) ./ sigma;
+            
+            if contains(modelDropdown.Value, 'Random Forest')
+                predicted_label = predict(rf_model, X_input_scaled);
+            else
+                predicted_label = predict(svm_model, X_input_scaled);
+            end
+            
+            diseaseName = string(predicted_label);
+            
+            % -------------------------------------------------------------
+            % CẬP NHẬT GIAO DIỆN
+            % -------------------------------------------------------------
+           statsDisease = regionprops(diseaseMask, 'Area');
+            totalDiseaseArea = sum([statsDisease.Area]);
+            density = (totalDiseaseArea / Area) * 100;
+            
+            % Phân rã logic kiểm tra
+            ai_predicted_healthy = contains(lower(diseaseName), 'healthy');
+            
+            % XỬ LÝ XUNG ĐỘT (HYBRID FUSION LOGIC)
+            if ai_predicted_healthy
+                % Trường hợp 1: AI đoán đúng lá khỏe
+                density = 0; 
+                diseaseMask = false(size(diseaseMask)); 
+                resultLabel.Text = ['🌿 LÁ KHỎE MẠNH (AI: ', char(diseaseName), ')'];
+                resultLabel.FontColor = [0.1 0.6 0.1];
+                
+            elseif density < 1.0
+                % Trường hợp 2: AI đoán sai (có bệnh), nhưng Hình thái học phủ quyết (không thấy vết bệnh)
+                density = 0; 
+                diseaseMask = false(size(diseaseMask)); 
+                resultLabel.Text = '🌿 LÁ KHỎE MẠNH';
+                resultLabel.FontColor = [0.1 0.6 0.1];
+                
+            else
+                % Trường hợp 3: AI đoán có bệnh, và Hình thái học xác nhận có vết bệnh (> 1%)
+                resultLabel.Text = ['⚠️ BỆNH LÝ: ', char(diseaseName)];
+                resultLabel.FontColor = [0.8 0.1 0.1];
+            end
+            
+            densityGauge.Value = min(density, 100);
+            
+            featureTable.Data = {
+                '1. Morph: Diện Tích (px)', round(Area);
+                '2. Morph: Chu Vi (px)', round(Perimeter);
+                '3. Morph: Độ Dẹt', sprintf('%.3f', Eccentricity);
+                '4. Morph: Độ Lồi', sprintf('%.3f', Solidity);
+                '5. Morph: Độ Bao Phủ', sprintf('%.3f', Extent);
+                '6. Morph: Trục Lớn', sprintf('%.2f', MajorAxis);
+                '7. Morph: Trục Nhỏ', sprintf('%.2f', MinorAxis);
+                '8. Morph: Tỷ Lệ Khung', sprintf('%.3f', AspectRatio);
+                '9. Morph: Đ.Kính T.Đương', sprintf('%.2f', EquivDiameter);
+                '10. Morph: Diện Tích Lồi', round(ConvexArea);
+                '11. Morph: Độ Tròn', sprintf('%.3f', Circularity);
+                '12. UI: MẬT ĐỘ BỆNH (%)', sprintf('%.2f %%', density);
+                '13. Color: H-Mean (Màu sắc)', sprintf('%.3f', h_mean);
+                '14. Color: H-Std', sprintf('%.3f', h_std);
+                '15. Color: H-Skew', sprintf('%.3f', h_skew);
+                '16. Color: S-Mean (Bão hòa)', sprintf('%.3f', s_mean);
+                '17. Color: S-Std', sprintf('%.3f', s_std);
+                '18. Color: S-Skew', sprintf('%.3f', s_skew);
+                '19. Color: V-Mean (Độ sáng)', sprintf('%.3f', v_mean);
+                '20. Color: V-Std', sprintf('%.3f', v_std);
+                '21. Color: V-Skew', sprintf('%.3f', v_skew);
+                '22. GLCM: Contrast', sprintf('%.3f', mean(stats.Contrast));
+                '23. GLCM: Correlation', sprintf('%.3f', mean(stats.Correlation));
+                '24. GLCM: Energy', sprintf('%.3f', mean(stats.Energy));
+                '25. GLCM: Homogeneity', sprintf('%.3f', mean(stats.Homogeneity))
+            };
+            
+           
+            
             imshow(img, 'Parent', axMarked);
             hold(axMarked, 'on');
             [B, ~] = bwboundaries(diseaseMask, 'noholes');
             for k = 1:length(B)
                 boundary = B{k};
-                plot(axMarked, boundary(:,2), boundary(:,1), 'r', 'LineWidth', 2);
+                plot(axMarked, boundary(:,2), boundary(:,1), 'r', 'LineWidth', 2.5);
             end
             hold(axMarked, 'off');
             
         catch ME
-            uialert(fig, ['Có lỗi xảy ra trong quá trình xử lý: ' ME.message], 'Lỗi Algorithm');
+            uialert(fig, ['Lỗi hệ thống: ' ME.message], 'Error');
         end
         
-        % Trả lại trạng thái nút
         analyzeBtn.Text = '🔍 PHÂN TÍCH & TRÍCH XUẤT';
+        analyzeBtn.Enable = 'on';
     end
 end
