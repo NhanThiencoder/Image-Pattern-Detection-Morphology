@@ -91,29 +91,27 @@ function PlantDiseaseApp()
             load(model_path, 'rf_model', 'svm_model', 'mu', 'sigma');
             
             % -------------------------------------------------------------
-            % TIỀN XỬ LÝ & TẠO MASK (THUẬT TOÁN MỚI KHÁNG NHIỄU)
+            % TIỀN XỬ LÝ & TẠO MASK (DÙNG ẢNH MỜ ĐỂ KHÁNG NHIỄU)
             % -------------------------------------------------------------
-            img = appData.OriginalImage;
-            img_smooth = imgaussfilt(img, 1.5); 
+            img = appData.OriginalImage; % Ảnh sắc nét nguyên bản
+            img_smooth = imgaussfilt(img, 1.5); % Ảnh làm mờ để tách nền
             
-            % BƯỚC 1: Tìm chiếc lá (Bỏ nền rác/đất)
-            grayImg = rgb2gray(img_smooth);
-            level = graythresh(grayImg);
-            leafMask = imbinarize(grayImg, level);
+            % BƯỚC 1: Tìm chiếc lá dựa trên ảnh mờ
+            grayImg_smooth = rgb2gray(img_smooth);
+            level = graythresh(grayImg_smooth);
+            leafMask = imbinarize(grayImg_smooth, level);
             leafMask = imfill(leafMask, 'holes');
             leafMask = bwareaopen(leafMask, 500); 
-            % Lệnh then chốt: Quét toàn ảnh, CHỈ giữ lại 1 vật thể to nhất (chiếc lá)
             leafMask = bwareafilt(leafMask, 1); 
             
-            % BƯỚC 2: Khoanh vùng bệnh (Vùng MẤT MÀU XANH trên lá)
-            hsvImg = rgb2hsv(img_smooth);
-            H = hsvImg(:,:,1); 
-            % Xanh lục: H từ 0.15 - 0.45. Bệnh là phần nằm ngoài khoảng này.
-            diseaseMask = (H < 0.15 | H > 0.45) & leafMask;
-            diseaseMask = bwareaopen(diseaseMask, 40); % Lọc hạt nhiễu
+            % BƯỚC 2: Khoanh vùng bệnh dựa trên ảnh mờ
+            hsvImg_smooth = rgb2hsv(img_smooth);
+            H_smooth = hsvImg_smooth(:,:,1); 
+            diseaseMask = (H_smooth < 0.15 | H_smooth > 0.45) & leafMask;
+            diseaseMask = bwareaopen(diseaseMask, 40); 
             
             % -------------------------------------------------------------
-            % TÍNH TOÁN ĐẶC TRƯNG HÌNH THÁI
+            % TÍNH TOÁN ĐẶC TRƯNG HÌNH THÁI (Dựa trên Mask, không ảnh hưởng bởi màu)
             % -------------------------------------------------------------
             props = regionprops(leafMask, 'Area', 'Perimeter', 'Eccentricity', ...
                 'Solidity', 'Extent', 'MajorAxisLength', 'MinorAxisLength', ...
@@ -133,20 +131,26 @@ function PlantDiseaseApp()
                               MajorAxis, MinorAxis, AspectRatio, EquivDiameter, ConvexArea, Circularity];
                               
             % -------------------------------------------------------------
-            % TÍNH TOÁN ĐẶC TRƯNG MÀU SẮC & KẾT CẤU
+            % TÍNH TOÁN MÀU SẮC & KẾT CẤU (BẮT BUỘC DÙNG ẢNH GỐC ĐỂ KHỚP VỚI LÚC TRAIN)
             % -------------------------------------------------------------
-            S = hsvImg(:,:,2); V = hsvImg(:,:,3);
+            % Quay lại dùng 'img' thay vì 'img_smooth'
+            hsvImg_original = rgb2hsv(img); 
+            H = hsvImg_original(:,:,1); S = hsvImg_original(:,:,2); V = hsvImg_original(:,:,3);
+            
             H_leaf = H(leafMask); S_leaf = S(leafMask); V_leaf = V(leafMask);
             h_mean = mean(H_leaf); h_std = std(H_leaf); h_skew = skewness(H_leaf);
             s_mean = mean(S_leaf); s_std = std(S_leaf); s_skew = skewness(S_leaf);
             v_mean = mean(V_leaf); v_std = std(V_leaf); v_skew = skewness(V_leaf);
             
-            gray_double = double(grayImg);
-            gray_double(~leafMask) = NaN;
+            gray_original = im2gray(img);
+            gray_double = double(gray_original);
+            gray_double(~leafMask) = NaN; % Bỏ nền đen bằng NaN
             
             offsets = [0 1; -1 1; -1 0; -1 -1]; 
+            warning('off', 'images:graycomatrix:ignoreNaN');
             glcm = graycomatrix(gray_double, 'Offset', offsets, 'NumLevels', 256, 'Symmetric', true);
             stats = graycoprops(glcm, {'Contrast', 'Correlation', 'Energy', 'Homogeneity'});
+            warning('on', 'images:graycomatrix:ignoreNaN');
             
             color_texture_features = [h_mean, h_std, h_skew, s_mean, s_std, s_skew, ...
                                       v_mean, v_std, v_skew, mean(stats.Contrast), ...
