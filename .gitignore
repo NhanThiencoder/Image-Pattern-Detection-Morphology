@@ -8,6 +8,7 @@ data/segmented/*
 # Model Weights
 models/*.pkl
 models/*.pth
+models/*.mat
 
 # Python Cache & Môi trường ảo
 __pycache__/

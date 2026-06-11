@@ -81,14 +81,14 @@ function PlantDiseaseApp()
         
         try
             app_dir = fileparts(mfilename('fullpath'));
-            model_path = fullfile(app_dir, '..', 'models', 'best_svm_rf_models.mat');
+            model_path = fullfile(app_dir, '..', 'models', 'best_fusion_models.mat');
             if ~exist(model_path, 'file')
-                model_path = fullfile(app_dir, 'models', 'best_svm_rf_models.mat');
+                model_path = fullfile(app_dir, 'models', 'best_fusion_models.mat');
             end
             if ~exist(model_path, 'file')
                 error(['Không tìm thấy model tại: ', model_path]);
             end
-            load(model_path, 'rf_model', 'svm_model', 'mu', 'sigma');
+            load(model_path, 'rf_fusion', 'svm_fusion', 'mu_fusion', 'sigma_fusion');
             
             % -------------------------------------------------------------
             % TIỀN XỬ LÝ & TẠO MASK (DÙNG ẢNH MỜ ĐỂ KHÁNG NHIỄU)
@@ -161,12 +161,15 @@ function PlantDiseaseApp()
             % -------------------------------------------------------------
             X_input = [morph_features, color_texture_features];
             X_input(isnan(X_input)) = 0; 
-            X_input_scaled = (X_input - mu) ./ sigma;
             
+            % Sửa biến mu, sigma thành mu_fusion, sigma_fusion
+            X_input_scaled = (X_input - mu_fusion) ./ sigma_fusion; 
+            
+            % Sửa biến model thành rf_fusion và svm_fusion
             if contains(modelDropdown.Value, 'Random Forest')
-                predicted_label = predict(rf_model, X_input_scaled);
+                predicted_label = predict(rf_fusion, X_input_scaled);
             else
-                predicted_label = predict(svm_model, X_input_scaled);
+                predicted_label = predict(svm_fusion, X_input_scaled);
             end
             
             diseaseName = string(predicted_label);
