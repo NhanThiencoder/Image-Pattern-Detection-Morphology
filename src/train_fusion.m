@@ -66,6 +66,8 @@ for m = 1:2
 end
 
 % Lưu kết quả
-save(fullfile(models_dir, 'best_fusion_models.mat'), 'svm_fusion', 'rf_fusion', 'mu_fusion', 'sigma_fusion');
+% Lưu kết quả tách biệt 2 model
+save(fullfile(models_dir, 'svm_fusion_model.mat'), 'svm_fusion', 'mu_fusion', 'sigma_fusion');
+save(fullfile(models_dir, 'rf_fusion_model.mat'), 'rf_fusion', 'mu_fusion', 'sigma_fusion');
 save(fullfile(reports_dir, 'fusion_results.mat'), 'Y_test', 'predictions_fusion', 'accuracies_fusion', 'f1_scores_fusion', 'time_svm_fusion', 'time_rf_fusion');
 fprintf('Đã lưu kết quả Fusion.\n');

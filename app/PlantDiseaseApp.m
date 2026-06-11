@@ -14,7 +14,7 @@ function PlantDiseaseApp()
     leftPanel = uipanel(mainGrid, 'Title', '⚙️ Điều Khiển & Kết Quả Học Thuật', ...
                         'FontSize', 14, 'FontWeight', 'bold');
                         
-    % SỬA LỖI UI: Định nghĩa đúng 9 hàng cho 9 phần tử
+    % Định nghĩa đúng 9 hàng cho 9 phần tử
     leftGrid = uigridlayout(leftPanel, [9, 1]);
     leftGrid.RowHeight = {40, 25, 35, 45, 25, 120, 25, '1x', 35}; 
     
@@ -80,15 +80,45 @@ function PlantDiseaseApp()
         drawnow;
         
         try
+            % -------------------------------------------------------------
+            % LOAD MODEL ĐỘNG DỰA TRÊN LỰA CHỌN CỦA NGƯỜI DÙNG (DROPDOWN)
+            % -------------------------------------------------------------
             app_dir = fileparts(mfilename('fullpath'));
-            model_path = fullfile(app_dir, '..', 'models', 'best_fusion_models.mat');
-            if ~exist(model_path, 'file')
-                model_path = fullfile(app_dir, 'models', 'best_fusion_models.mat');
+            projectRoot = fileparts(app_dir); 
+            
+            % Kiểm tra xem người dùng đang chọn model nào
+            is_rf = contains(modelDropdown.Value, 'Random Forest');
+            
+            % Gán tên file tương ứng 
+            if is_rf
+                model_name = 'rf_fusion_model.mat';
+            else
+                model_name = 'svm_fusion_model.mat';
             end
+            
+            model_path = fullfile(projectRoot, 'models', model_name);
+            
+            % Fallback (nếu app đang chạy thẳng từ thư mục root thì models/ nằm ngang hàng)
             if ~exist(model_path, 'file')
-                error(['Không tìm thấy model tại: ', model_path]);
+                model_path = fullfile(app_dir, 'models', model_name);
             end
-            load(model_path, 'rf_fusion', 'svm_fusion', 'mu_fusion', 'sigma_fusion');
+            
+            if ~exist(model_path, 'file')
+                error(['Không tìm thấy model tại: ', model_path, char(10), ...
+                       'Vui lòng đảm bảo bạn đã chạy file train_fusion.m để tạo file .mat này!']);
+            end
+            
+            % Load dữ liệu từ file được chọn
+            modelData = load(model_path);
+            
+            % Lấy các biến ra khỏi cấu trúc modelData
+            if is_rf
+                classifier = modelData.rf_fusion;
+            else
+                classifier = modelData.svm_fusion;
+            end
+            mu_val = modelData.mu_fusion;
+            sigma_val = modelData.sigma_fusion;
             
             % -------------------------------------------------------------
             % TIỀN XỬ LÝ & TẠO MASK (DÙNG ẢNH MỜ ĐỂ KHÁNG NHIỄU)
@@ -131,9 +161,8 @@ function PlantDiseaseApp()
                               MajorAxis, MinorAxis, AspectRatio, EquivDiameter, ConvexArea, Circularity];
                               
             % -------------------------------------------------------------
-            % TÍNH TOÁN MÀU SẮC & KẾT CẤU (BẮT BUỘC DÙNG ẢNH GỐC ĐỂ KHỚP VỚI LÚC TRAIN)
+            % TÍNH TOÁN MÀU SẮC & KẾT CẤU 
             % -------------------------------------------------------------
-            % Quay lại dùng 'img' thay vì 'img_smooth'
             hsvImg_original = rgb2hsv(img); 
             H = hsvImg_original(:,:,1); S = hsvImg_original(:,:,2); V = hsvImg_original(:,:,3);
             
@@ -144,7 +173,7 @@ function PlantDiseaseApp()
             
             gray_original = im2gray(img);
             gray_double = double(gray_original);
-            gray_double(~leafMask) = NaN; % Bỏ nền đen bằng NaN
+            gray_double(~leafMask) = NaN; 
             
             offsets = [0 1; -1 1; -1 0; -1 -1]; 
             warning('off', 'images:graycomatrix:ignoreNaN');
@@ -162,22 +191,17 @@ function PlantDiseaseApp()
             X_input = [morph_features, color_texture_features];
             X_input(isnan(X_input)) = 0; 
             
-            % Sửa biến mu, sigma thành mu_fusion, sigma_fusion
-            X_input_scaled = (X_input - mu_fusion) ./ sigma_fusion; 
+            % Chuẩn hóa dữ liệu bằng mu và sigma tương ứng của file đó
+            X_input_scaled = (X_input - mu_val) ./ sigma_val; 
             
-            % Sửa biến model thành rf_fusion và svm_fusion
-            if contains(modelDropdown.Value, 'Random Forest')
-                predicted_label = predict(rf_fusion, X_input_scaled);
-            else
-                predicted_label = predict(svm_fusion, X_input_scaled);
-            end
-            
+            % Dùng biến classifier chung đã được phân luồng ở trên
+            predicted_label = predict(classifier, X_input_scaled);
             diseaseName = string(predicted_label);
             
             % -------------------------------------------------------------
             % CẬP NHẬT GIAO DIỆN
             % -------------------------------------------------------------
-           statsDisease = regionprops(diseaseMask, 'Area');
+            statsDisease = regionprops(diseaseMask, 'Area');
             totalDiseaseArea = sum([statsDisease.Area]);
             density = (totalDiseaseArea / Area) * 100;
             
@@ -234,8 +258,6 @@ function PlantDiseaseApp()
                 '24. GLCM: Energy', sprintf('%.3f', mean(stats.Energy));
                 '25. GLCM: Homogeneity', sprintf('%.3f', mean(stats.Homogeneity))
             };
-            
-           
             
             imshow(img, 'Parent', axMarked);
             hold(axMarked, 'on');

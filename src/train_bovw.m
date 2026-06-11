@@ -63,6 +63,7 @@ for m = 1:2
 end
 
 % Lưu kết quả
-save(fullfile(models_dir, 'best_bovw_models.mat'), 'svm_bovw', 'rf_bovw', 'mu_bovw', 'sigma_bovw');
+save(fullfile(models_dir, 'svm_bovw_model.mat'), 'svm_bovw', 'mu_bovw', 'sigma_bovw');
+save(fullfile(models_dir, 'rf_bovw_model.mat'), 'rf_bovw', 'mu_bovw', 'sigma_bovw');
 save(fullfile(reports_dir, 'bovw_results.mat'), 'Y_test', 'predictions_bovw', 'accuracies_bovw', 'f1_scores_bovw', 'time_svm_bovw', 'time_rf_bovw');
 fprintf('Đã lưu kết quả BoVW.\n');
